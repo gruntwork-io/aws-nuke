@@ -64,21 +64,6 @@ func getS3BucketTags(svc *s3.S3, bucketName string) ([]map[string]string, error)
 	return tags, nil
 }
 
-// hasValidTags checks if bucket tags permit it to be in the deletion list.
-func hasValidTags(bucketTags []map[string]string) bool {
-	// Exclude deletion of any buckets with cloud-nuke-excluded tags
-	if len(bucketTags) > 0 {
-		for _, tagSet := range bucketTags {
-			key := strings.ToLower(tagSet["Key"])
-			value := strings.ToLower(tagSet["Value"])
-			if key == AwsResourceExclusionTagKey && value == "true" {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 // S3Bucket - represents S3 bucket
 type S3Bucket struct {
 	Name          string
@@ -92,7 +77,9 @@ type S3Bucket struct {
 
 // getAllS3Buckets returns a map of per region AWS S3 buckets which were created before excludeAfter
 func getAllS3Buckets(awsSession *session.Session, excludeAfter time.Time,
-	targetRegions []string, bucketNameSubStr string, batchSize int) (map[string][]*string, error) {
+	targetRegions []string, bucketNameSubStr string, batchSize int,
+	resourceNamePattern string, excludeResourceNamePattern string,
+	requireResourceTag string, excludeResourceTag string) (map[string][]*string, error) {
 
 	if batchSize <= 0 {
 		return nil, fmt.Errorf("Invalid batchsize - %d - should be > 0", batchSize)
@@ -160,8 +147,10 @@ func getRegionClients(regions []string) (map[string]*s3.S3, error) {
 }
 
 // getBucketNamesPerRegions gets valid bucket names concurrently from list of target buckets
-func getBucketNamesPerRegion(svc *s3.S3, targetBuckets []*s3.Bucket, excludeAfter time.Time, regionClients map[string]*s3.S3,
-	bucketNameSubStr string) (map[string][]*string, error) {
+func getBucketNamesPerRegion(svc *s3.S3, targetBuckets []*s3.Bucket, excludeAfter time.Time,
+	regionClients map[string]*s3.S3, bucketNameSubStr string,
+	resourceNamePattern string, excludeResourceNamePattern string,
+	requireResourceTag string, excludeResourceTag string) (map[string][]*string, error) {
 
 	var bucketNamesPerRegion = make(map[string][]*string)
 	var bucketCh = make(chan *S3Bucket, len(targetBuckets))
@@ -176,7 +165,11 @@ func getBucketNamesPerRegion(svc *s3.S3, targetBuckets []*s3.Bucket, excludeAfte
 		wg.Add(1)
 		go func(bucket *s3.Bucket) {
 			defer wg.Done()
-			getBucketInfo(svc, bucket, excludeAfter, regionClients, bucketCh)
+			getBucketInfo(
+				svc, bucket, excludeAfter, regionClients, bucketCh,
+				resourceNamePattern, excludeResourceNamePattern,
+				requireResourceTag, excludeResourceTag
+			)
 		}(bucket)
 	}
 
@@ -205,7 +198,12 @@ func getBucketNamesPerRegion(svc *s3.S3, targetBuckets []*s3.Bucket, excludeAfte
 }
 
 // getBucketInfo populates the local S3Bucket struct for the passed AWS bucket
-func getBucketInfo(svc *s3.S3, bucket *s3.Bucket, excludeAfter time.Time, regionClients map[string]*s3.S3, bucketCh chan<- *S3Bucket) {
+func getBucketInfo(
+	svc *s3.S3, bucket *s3.Bucket, excludeAfter time.Time,
+	regionClients map[string]*s3.S3, bucketCh chan<- *S3Bucket,
+	resourceNamePattern string, excludeResourceNamePattern string,
+	requireResourceTag string, excludeResourceTag string
+	) {
 	var bucketData S3Bucket
 	bucketData.Name = aws.StringValue(bucket.Name)
 	bucketData.CreationDate = aws.TimeValue(bucket.CreationDate)
@@ -240,8 +238,15 @@ func getBucketInfo(svc *s3.S3, bucket *s3.Bucket, excludeAfter time.Time, region
 		return
 	}
 	bucketData.Tags = bucketTags
-	if !hasValidTags(bucketData.Tags) {
+	if !HasValidTags(bucketData.Tags, requireResourceTag, excludeResourceTag) {
 		bucketData.InvalidReason = "Matched tag filter"
+		bucketCh <- &bucketData
+		return
+	}
+
+	// Check if the bucket has valid name
+	if !HasValidName(bucketData.Tags, resourceNamePattern, excludeResourceNamePattern) {
+		bucketData.InvalidReason = "Matched name filter"
 		bucketCh <- &bucketData
 		return
 	}
