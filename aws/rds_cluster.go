@@ -16,7 +16,7 @@ func waitUntilRdsClusterDeleted(svc *rds.RDS, input *rds.DescribeDBClustersInput
 	for i := 0; i < 90; i++ {
 		_, err := svc.DescribeDBClusters(input)
 		if err != nil {
-			if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == rds.ErrCodeDBClusterNotFoundFault  {
+			if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == rds.ErrCodeDBClusterNotFoundFault {
 				return nil
 			}
 
@@ -29,7 +29,6 @@ func waitUntilRdsClusterDeleted(svc *rds.RDS, input *rds.DescribeDBClustersInput
 
 	return RdsDeleteError{name: *input.DBClusterIdentifier}
 }
-
 
 func getAllRdsClusters(session *session.Session, excludeAfter time.Time) ([]*string, error) {
 	svc := rds.New(session)
@@ -44,7 +43,7 @@ func getAllRdsClusters(session *session.Session, excludeAfter time.Time) ([]*str
 
 	for _, database := range result.DBClusters {
 		if excludeAfter.After(*database.ClusterCreateTime) {
-		  names = append(names, database.DBClusterIdentifier)
+			names = append(names, database.DBClusterIdentifier)
 		}
 	}
 
@@ -65,7 +64,7 @@ func nukeAllRdsClusters(session *session.Session, names []*string) error {
 	for _, name := range names {
 		params := &rds.DeleteDBClusterInput{
 			DBClusterIdentifier: name,
-			SkipFinalSnapshot:    awsgo.Bool(true),
+			SkipFinalSnapshot:   awsgo.Bool(true),
 		}
 
 		_, err := svc.DeleteDBCluster(params)

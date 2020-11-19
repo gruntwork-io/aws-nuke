@@ -32,4 +32,3 @@ func (instance DBClusters) Nuke(session *session.Session, identifiers []string) 
 
 	return nil
 }
-

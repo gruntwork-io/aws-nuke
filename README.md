@@ -20,6 +20,7 @@ The currently supported functionality includes:
 - Deleting all ECS clusters in an AWS account
 - Deleting all EKS clusters in an AWS account
 - Deleting all RDS DB instances in an AWS account
+- Deleting all RDS DB snapshots in an AWS account - except for automated snapshots
 - Deleting all S3 buckets in an AWS account - except for buckets tagged with Key=cloud-nuke-excluded Value=true
 - Deleting all default VPCs in an AWS account
 - Revoking the default rules in the un-deletable default security group of a VPC
@@ -206,6 +207,7 @@ To find out what we options are supported in the config file today, consult this
 | s3            | partial |
 | ec2 instance  | none    |
 | iam role      | none    |
+| rds snapshots | partial |
 | ... (more to come) | none |
 
 
@@ -218,6 +220,16 @@ _Note: the fields without `_regex` suffixes refer to support for plain-text matc
 | names_regex | ✅      | ✅      |
 | tags        | none    | none    |
 | tags_regex  | none    | none    |
+
+##### RDS snapshots resource type:
+_Note: the fields without `_regex` suffixes refer to support for plain-text matching against those fields._
+
+| field       | include | exclude |
+|-------------|---------|---------|
+| names       | none    | none    |
+| names_regex | ✅      | ✅      |
+| tags        | none    | none    |
+| tags_regex  | ✅      | ✅      |
 
 ### Log level
 

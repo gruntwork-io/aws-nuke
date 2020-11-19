@@ -73,7 +73,7 @@ func TestNukeRDSInstance(t *testing.T) {
 	)
 
 	rdsName := "cloud-nuke-test-" + util.UniqueID()
-	excludeAfter := time.Now().Add(1*time.Hour)
+	excludeAfter := time.Now().Add(1 * time.Hour)
 
 	createTestRDSInstance(t, session, rdsName)
 

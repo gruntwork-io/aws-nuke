@@ -19,9 +19,9 @@ func createTestRDSCluster(t *testing.T, session *session.Session, name string) {
 	svc := rds.New(session)
 	params := &rds.CreateDBClusterInput{
 		DBClusterIdentifier: awsgo.String(name),
-		Engine:               awsgo.String("aurora-mysql"),
-		MasterUsername:       awsgo.String("gruntwork"),
-		MasterUserPassword:   awsgo.String("password"),
+		Engine:              awsgo.String("aurora-mysql"),
+		MasterUsername:      awsgo.String("gruntwork"),
+		MasterUserPassword:  awsgo.String("password"),
 	}
 
 	_, err := svc.CreateDBCluster(params)
@@ -39,7 +39,7 @@ func TestNukeRDSCluster(t *testing.T) {
 	)
 
 	rdsName := "cloud-nuke-test" + util.UniqueID()
-	excludeAfter := time.Now().Add(1*time.Hour)
+	excludeAfter := time.Now().Add(1 * time.Hour)
 
 	createTestRDSCluster(t, session, rdsName)
 

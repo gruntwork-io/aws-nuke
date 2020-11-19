@@ -409,6 +409,38 @@ func GetAllResources(targetRegions []string, excludeAfter time.Time, resourceTyp
 		}
 		// End RDS DB Clusters
 
+		// RDS DB Snapshots
+		dbSnapshots := DBSnapshots{}
+		if IsNukeable(dbSnapshots.ResourceName(), resourceTypes) {
+			snapShotNames, err := getAllRdsSnapshots(session, excludeAfter, configObj)
+
+			if err != nil {
+				return nil, errors.WithStackTrace(err)
+			}
+
+			if len(snapShotNames) > 0 {
+				dbSnapshots.SnapshotNames = awsgo.StringValueSlice(snapShotNames)
+				resourcesInRegion.Resources = append(resourcesInRegion.Resources, dbSnapshots)
+			}
+		}
+		// End of RDS DB Snapshots
+
+		// RDS Aurora DB Cluster Snapshots
+		dbClusterSnapshots := DBClusterSnapshots{}
+		if IsNukeable(dbClusterSnapshots.ResourceName(), resourceTypes) {
+			snapShotClusterNames, err := getAllRdsClusterSnapshots(session, excludeAfter, configObj)
+
+			if err != nil {
+				return nil, errors.WithStackTrace(err)
+			}
+
+			if len(snapShotClusterNames) > 0 {
+				dbClusterSnapshots.SnapshotNames = awsgo.StringValueSlice(snapShotClusterNames)
+				resourcesInRegion.Resources = append(resourcesInRegion.Resources, dbClusterSnapshots)
+			}
+		}
+		// End of RDS Aurora DB Cluster Snapshots
+
 		// S3 Buckets
 		s3Buckets := S3Buckets{}
 		if IsNukeable(s3Buckets.ResourceName(), resourceTypes) {
@@ -474,6 +506,7 @@ func ListResourceTypes() []string {
 		ECSServices{}.ResourceName(),
 		EKSClusters{}.ResourceName(),
 		DBInstances{}.ResourceName(),
+		DBSnapshots{}.ResourceName(),
 		S3Buckets{}.ResourceName(),
 	}
 	sort.Strings(resourceTypes)

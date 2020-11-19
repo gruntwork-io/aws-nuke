@@ -33,7 +33,7 @@ func (instance DBInstances) Nuke(session *session.Session, identifiers []string)
 	return nil
 }
 
-type RdsDeleteError struct{
+type RdsDeleteError struct {
 	name string
 }
 

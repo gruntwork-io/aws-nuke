@@ -1,0 +1,11 @@
+rdsSnapshots:
+  include:
+    names_regex:
+      - .*-include-.*
+    tags_regex:
+      - .*-tag1-.*
+  exclude:
+    names_regex:
+      - .*cloud-exclude-snapshot-.*
+    tags_regex:
+      - .*-tag2-.*
