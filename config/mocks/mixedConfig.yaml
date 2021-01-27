@@ -1,0 +1,16 @@
+iam-role:
+  include:
+    names_regex:
+      - .*-exec-.*
+      - .*-task-role$
+  exclude:
+    names_regex:
+      - ^AWSServiceRole.*
+s3:
+  include:
+    names_regex:
+      - ^alb-.*-access-logs
+      - prod
+  exclude:
+    names_regex:
+      - public

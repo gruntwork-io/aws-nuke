@@ -1,0 +1,8 @@
+iam-role:
+  include:
+    names_regex:
+      - .*-exec-.*
+      - .*-task-role$
+  exclude:
+    names_regex:
+      - ^AWSServiceRole.*

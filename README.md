@@ -131,7 +131,7 @@ cloud-nuke aws --resource-type ec2 --dry-run
 
 For more granularity, such as being able to specify which resources to terminate using regular expressions or plain text, you can pass in a configuration file.
 
-_Note: Config file support is a new feature and only filtering s3 buckets by name using regular expressions is currently supported. We'll be adding more support in the future, and pull requests are welcome!_
+_Note: Config file now supports filtering s3 buckets and iam roles using regular expressions. We'll continue adding more support in the future, and pull requests are welcome!_
 
 ```shell
 cloud-nuke aws --resource-type s3 --config path/to/file.yaml
@@ -140,6 +140,7 @@ cloud-nuke aws --resource-type s3 --config path/to/file.yaml
 Given this command, `cloud-nuke` will nuke _only_ S3 buckets, as specified by the `--resource-type s3` option.
 
 Now given the following config, the s3 buckets that will be nuked are further filtered to only include ones that match any of the provided regular expressions. So a bucket named `alb-app-access-logs` would be deleted, but a bucket named `my-s3-bucket` would not.
+
 ```yaml
 s3:
   include:
@@ -148,8 +149,23 @@ s3:
       - .*-prod-alb-.*
 ```
 
+```shell
+cloud-nuke aws --resource-type iam-role --config path/to/file.yaml
+```
+
+Just like previous example, this command will nuke _only_ IAM Roles specified by `--resource-type iam-role` option.
+
+With the following config, the iam roles that will be nuked are filtered to match with the provided regular expression. In that case, IAM roles matching `task-role` will be deleted, but any other non-matching role will be preserved.
+
+```yaml
+iam-role:
+  include:
+    names_regex:
+      - .*-task-role$
+```
+
 #### Include and exclude together
-Now consider the following contrived example:
+Now consider the following contrived examples:
 
 ```yaml
 s3:
@@ -163,9 +179,23 @@ s3:
       - prod
 ```
 
-The intention is to delete all the s3 buckets that match the include rules but not the exclude rules. Filtering is commutative, meaning that you should get the same result whether you apply the include filters before or after the exclude filters.
-
+The intention is to delete all the s3 buckets that match the include rules but not the exclude rules. 
 The result of these filters applied in either order will be a set of s3 buckets that match `^alb-.*-access-logs$` as long as they do not also contain `public` or `prod`. The rule to include s3 buckets matching `.*-prod-alb-.*` is negated by the rule to exclude those matching `prod`.
+
+```yaml
+iam-role:
+  include:
+    names_regex:
+      - .*-task-role$
+      - .*-exec-role$
+  exclude:
+    names_regex:
+      - .*-cloudwatch-.*
+```
+
+Like in previous example, using this config will lead to cloud-nuke to delete all IAM Roles that end in `-task-role` and `exec-role` but not those that contain `-cloudwatch-`. This means that a role called `ec2-task-role` wille be deleted, while a role called `ecs-cloudwatch-exec-role` will be excluded.
+
+Filtering is commutative, meaning that you should get the same result whether you apply the include filters before or after the exclude filters.
 
 <!-- We might only want to support region and resource-type in the command line, rather than in the config file.
 
@@ -192,9 +222,33 @@ s3:
 
 #### CLI options override config file options
 
-The options provided in the command line take precedence over those provided in any config file that gets passed in. For example, say you provide `--resource-type s3` in the command line, along with a config file that specifies `ec2:` at the top level but doesn't specify `s3:`. The command line argument filters the resource types to include only s3, so the rules in the config file for `ec2:` are ignored, and ec2 resources are not nuked. All s3 resources would be nuked.
+The options provided in the command line take precedence over those provided in any config file that gets passed in. With config file now supporting both S3 and IAM Role include/exclude filters, it is important to bear in mind the following scenarios to avoid confusion or unexpectedly delete resources.
 
-In the same vein, say you do not provide a `--resource-type` option in the command line, but you do pass in a config file that only lists rules for `s3:`, such as `cloud-nuke aws --config path/to/config.yaml`. In this case _all_ resources would be nuked, but among `s3` buckets, only those matching your config file rules would be nuked.
+```shell
+cloud-nuke aws --config path/to/config.yaml
+```
+
+Running this command will result in the nuking of _ALL_ resources, using config file for filtering only S3 and/or IAM Role resources specified. Any unsupported resources in the config file, such as `ec2` will be ignored, and if filters for IAM role and/or S3 are not present, cloud-nuke will delete all S3 and IAM role resources.
+
+```shell
+cloud-nuke aws --resource-type s3 --config path/to/config.yaml
+```
+
+Here `cloud-nuke` used along with `--resource-type s3` option will result in nuking S3 buckets. Given a `--config` option, any include/exclude filters for S3 will be used to perform the deletion. Filters for IAM Role will be ignored and any unsupported resources will also be ignored.
+
+Note that if S3 resource filters are not present in config file, cloud-nuke will delete all S3 buckets. 
+
+```shell
+cloud-nuke aws --resource-type iam-role --config path/to/config.yaml
+```
+
+Similar to the previous example, `cloud-nuke` used along with `--resource-type iam-role` option will result in nuking IAM roles. Given a `--config` option, any include/exclude filters for IAM roles will be used to perform the deletion. Just like with the S3 example, filters for the unselected resource type (S3) will be ignored, and any unsupported resources will be ignored, and if there are no filters, all IAM roles will be deleted.
+
+You can also combine `--resource-type` filters to apply to multiple resources. For example, if you wish to delete both S3 buckets and IAM roles based on the config file:
+
+```shell
+ cloud-nuke aws --resource-type s3 --resource-type iam-role --config path/to/config.yaml 
+```
 
 Be careful when nuking and append the `--dry-run` option if you're unsure. Even without `--dry-run`, `cloud-nuke` will list resources that would undergo nuking and wait for your confirmation before carrying it out.
 
@@ -206,11 +260,11 @@ To find out what we options are supported in the config file today, consult this
 |---------------|---------|
 | s3            | partial |
 | ec2 instance  | none    |
-| iam role      | none    |
+| iam role      | partial |
 | ... (more to come) | none |
 
 
-##### s3 resource type:
+##### Supported field types:
 _Note: the fields without `_regex` suffixes refer to support for plain-text matching against those fields._
 
 | field       | include | exclude |

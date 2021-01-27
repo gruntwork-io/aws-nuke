@@ -1,0 +1,5 @@
+iam-role:
+  include:
+    names_regex:
+      - .*-exec-.*
+      - .*-task-role$

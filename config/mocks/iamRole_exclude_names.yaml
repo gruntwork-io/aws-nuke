@@ -1,0 +1,4 @@
+iam-role:
+  exclude:
+    names_regex:
+      - ^AWSServiceRole.*

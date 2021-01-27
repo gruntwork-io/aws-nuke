@@ -1,15 +1,17 @@
 package config
 
 import (
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
 	"regexp"
+
+	"gopkg.in/yaml.v2"
 )
 
 // RawConfig - used to unmarshall the raw config file
 type RawConfig struct {
-	S3 rawResourceType `yaml:"s3"`
+	S3      rawResourceType `yaml:"s3"`
+	IamRole rawResourceType `yaml:"iam-role"`
 }
 
 type rawResourceType struct {
@@ -24,7 +26,8 @@ type rawFilterRule struct {
 // Config - the config object we pass around
 // that is a parsed version of RawConfig
 type Config struct {
-	S3 ResourceType
+	S3      ResourceType
+	IamRole ResourceType
 }
 
 // ResourceType - the include and exclude
@@ -78,6 +81,24 @@ func GetConfig(filePath string) (*Config, error) {
 		}
 
 		configObj.S3.ExcludeRule.NamesRE = append(configObj.S3.ExcludeRule.NamesRE, re)
+	}
+
+	for _, pattern := range rawConfig.IamRole.IncludeRule.NamesRE {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, err
+		}
+
+		configObj.IamRole.IncludeRule.NamesRE = append(configObj.IamRole.IncludeRule.NamesRE, re)
+	}
+
+	for _, pattern := range rawConfig.IamRole.ExcludeRule.NamesRE {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, err
+		}
+
+		configObj.IamRole.ExcludeRule.NamesRE = append(configObj.IamRole.ExcludeRule.NamesRE, re)
 	}
 
 	return &configObj, nil
