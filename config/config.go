@@ -9,7 +9,8 @@ import (
 
 // RawConfig - used to unmarshall the raw config file
 type RawConfig struct {
-	S3 rawResourceType `yaml:"s3"`
+	S3      rawResourceType `yaml:"s3"`
+	IAMRole rawResourceType `yaml:"iamRole"`
 }
 
 type rawResourceType struct {
@@ -24,7 +25,8 @@ type rawFilterRule struct {
 // Config - the config object we pass around
 // that is a parsed version of RawConfig
 type Config struct {
-	S3 ResourceType
+	S3      ResourceType
+	IAMRole ResourceType
 }
 
 // ResourceType - the include and exclude
@@ -40,8 +42,7 @@ type FilterRule struct {
 	NamesRE []*regexp.Regexp
 }
 
-// GetConfig - unmarshall the raw config file
-// and parse it into a config object.
+// GetConfig - unmarshal the raw config file and parse it into a config object.
 func GetConfig(filePath string) (*Config, error) {
 	var configObj Config
 
@@ -78,6 +79,24 @@ func GetConfig(filePath string) (*Config, error) {
 		}
 
 		configObj.S3.ExcludeRule.NamesRE = append(configObj.S3.ExcludeRule.NamesRE, re)
+	}
+
+	for _, pattern := range rawConfig.IAMRole.IncludeRule.NamesRE {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, err
+		}
+
+		configObj.IAMRole.IncludeRule.NamesRE = append(configObj.IAMRole.IncludeRule.NamesRE, re)
+	}
+
+	for _, pattern := range rawConfig.IAMRole.ExcludeRule.NamesRE {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, err
+		}
+
+		configObj.IAMRole.ExcludeRule.NamesRE = append(configObj.IAMRole.ExcludeRule.NamesRE, re)
 	}
 
 	return &configObj, nil

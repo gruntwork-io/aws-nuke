@@ -186,15 +186,16 @@ func GetTargetRegions(enabledRegions []string, selectedRegions []string, exclude
 // GetAllResources - Lists all aws resources
 func GetAllResources(targetRegions []string, excludeAfter time.Time, resourceTypes []string, configObj config.Config) (*AwsAccountResources, error) {
 	account := AwsAccountResources{
-		Resources: make(map[string]AwsRegionResource),
+		RegionResources:    make(map[string]AwsRegionResource),
+		NonRegionResources: []AwsResources{},
 	}
 
-	count := 1
+	regionNumber := 1
 	totalRegions := len(targetRegions)
 	var resourcesCache = map[string]map[string][]*string{}
 
 	for _, region := range targetRegions {
-		logging.Logger.Infof("Checking region [%d/%d]: %s", count, totalRegions, region)
+		logging.Logger.Infof("Checking region [%d/%d]: %s", regionNumber, totalRegions, region)
 
 		session, err := session.NewSession(&awsgo.Config{
 			Region: awsgo.String(region)},
@@ -458,7 +459,7 @@ func GetAllResources(targetRegions []string, excludeAfter time.Time, resourceTyp
 
 				resourcesCache["S3"] = make(map[string][]*string)
 
-				for bucketRegion, _ := range bucketNamesPerRegion {
+				for bucketRegion := range bucketNamesPerRegion {
 					resourcesCache["S3"][bucketRegion] = bucketNamesPerRegion[bucketRegion]
 				}
 			}
@@ -473,10 +474,33 @@ func GetAllResources(targetRegions []string, excludeAfter time.Time, resourceTyp
 		// End S3 Buckets
 
 		if len(resourcesInRegion.Resources) > 0 {
-			account.Resources[region] = resourcesInRegion
+			account.RegionResources[region] = resourcesInRegion
 		}
-		count++
+		regionNumber++
 	}
+
+	// TODO: maybe S3 buckets also can follow this pattern?
+	// IAM Roles
+	session, err := session.NewSession()
+
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
+	resourcesWithoutRegion := []AwsResources{}
+
+	iamRoles := IAMRoles{}
+	if IsNukeable(iamRoles.ResourceName(), resourceTypes) {
+		iamRoleNames, err := getAllIAMRoles(session, excludeAfter, configObj)
+		if err != nil {
+			return nil, errors.WithStackTrace(err)
+		}
+		if len(iamRoleNames) > 0 {
+			iamRoles.RoleNames = awsgo.StringValueSlice(iamRoleNames)
+			account.NonRegionResources = append(resourcesWithoutRegion, iamRoles)
+		}
+	}
+	// End IAM Roles
 
 	return &account, nil
 }
@@ -499,6 +523,7 @@ func ListResourceTypes() []string {
 		DBInstances{}.ResourceName(),
 		LambdaFunctions{}.ResourceName(),
 		S3Buckets{}.ResourceName(),
+		IAMRoles{}.ResourceName(),
 	}
 	sort.Strings(resourceTypes)
 	return resourceTypes
@@ -530,13 +555,13 @@ func NukeAllResources(account *AwsAccountResources, regions []string) error {
 			return errors.WithStackTrace(err)
 		}
 
-		resourcesInRegion := account.Resources[region]
+		resourcesInRegion := account.RegionResources[region]
 		for _, resources := range resourcesInRegion.Resources {
 			length := len(resources.ResourceIdentifiers())
 
 			// Split api calls into batches
-			logging.Logger.Infof("Terminating %d resources in batches", length)
 			batches := split(resources.ResourceIdentifiers(), resources.MaxBatchSize())
+			logging.Logger.Infof("Terminating %d resources in %d batches", length, len(batches))
 
 			for i := 0; i < len(batches); i++ {
 				batch := batches[i]
@@ -555,6 +580,40 @@ func NukeAllResources(account *AwsAccountResources, regions []string) error {
 					logging.Logger.Info("Sleeping for 10 seconds before processing next batch...")
 					time.Sleep(10 * time.Second)
 				}
+			}
+		}
+	}
+
+	session, err := session.NewSession()
+
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	resourcesWithoutRegion := account.NonRegionResources
+	for _, resources := range resourcesWithoutRegion {
+		length := len(resources.ResourceIdentifiers())
+
+		// Split api calls into batches
+		batches := split(resources.ResourceIdentifiers(), resources.MaxBatchSize())
+		logging.Logger.Infof("Terminating %d resources in %d batches", length, len(batches))
+
+		for i := 0; i < len(batches); i++ {
+			batch := batches[i]
+			if err := resources.Nuke(session, batch); err != nil {
+				// TODO: Figure out actual error type
+				if strings.Contains(err.Error(), "RequestLimitExceeded") {
+					logging.Logger.Info("Request limit reached. Waiting 1 minute before making new requests")
+					time.Sleep(1 * time.Minute)
+					continue
+				}
+
+				return errors.WithStackTrace(err)
+			}
+
+			if i != len(batches)-1 {
+				logging.Logger.Info("Sleeping for 10 seconds before processing next batch...")
+				time.Sleep(10 * time.Second)
 			}
 		}
 	}

@@ -1,0 +1,17 @@
+iamRole:
+  include:
+    names_regex:
+      - cloud-nuke
+      - test
+  exclude:
+    names_regex:
+      - ^AWS
+      - prod
+s3:
+  include:
+    names_regex:
+      - ^alb-.*-access-logs
+      - prod
+  exclude:
+    names_regex:
+      - public

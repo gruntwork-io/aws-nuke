@@ -1,0 +1,9 @@
+iamRole:
+  include:
+    names_regex:
+      - cloud-nuke
+      - test
+  exclude:
+    names_regex:
+      - ^AWS
+      - prod
