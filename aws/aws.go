@@ -502,7 +502,21 @@ func GetAllResources(targetRegions []string, excludeAfter time.Time, resourceTyp
 			}
 		}
 		// End Lambda Functions
+		// Dynamo DB tables
+		DynamoDB := DynamoDB{}
+		if IsNukeable(DynamoDB.ResourceName(), resourceTypes) {
+			tablenames, err := getAllDynamoTables(session, excludeAfter)
 
+			if err != nil {
+				return nil, errors.WithStackTrace(err)
+			}
+
+			if len(tablenames) > 0 {
+				DynamoDB.DynamoTableNames = awsgo.StringValueSlice(tablenames)
+				resourcesInRegion.Resources = append(resourcesInRegion.Resources, DynamoDB)
+			}
+		}
+		// End Dynamo DB tables
 		// S3 Buckets
 		s3Buckets := S3Buckets{}
 		if IsNukeable(s3Buckets.ResourceName(), resourceTypes) {
@@ -610,6 +624,7 @@ func ListResourceTypes() []string {
 		DBInstances{}.ResourceName(),
 		LambdaFunctions{}.ResourceName(),
 		S3Buckets{}.ResourceName(),
+		DynamoDB{}.ResourceName(),
 		IAMUsers{}.ResourceName(),
 	}
 	sort.Strings(resourceTypes)
