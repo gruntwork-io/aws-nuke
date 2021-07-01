@@ -330,6 +330,23 @@ cd aws
 go test -v -run TestListAMIs
 ```
 
+### Docker
+
+If you prefer to run cloud-nuke in a docker container, that's now an option. We don't have images in the public repositories yet, but you can build your own iimage locally and run it afterward. Here is how to build the container:
+
+```bash
+./build_docker.sh 
+```
+
+When you've built the container, you first need to have set your AWS environment variables. The '-e' options will pass them into the container.
+Then you can run it like this:
+
+```bash
+docker run -it --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN gruntwork-io/cloud-nuke
+```
+
+That's it! You now have a dockerized cloud-nuke.
+
 ### Formatting
 
 Every source file in this project should be formatted with `go fmt`.

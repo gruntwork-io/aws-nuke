@@ -1,0 +1,9 @@
+.idea
+vendor
+.vscode
+cloud-nuke
+.circleci
+_docs
+*.txt
+*.md
+*.sh
