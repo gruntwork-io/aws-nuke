@@ -406,6 +406,20 @@ func GetAllResources(targetRegions []string, excludeAfter time.Time, resourceTyp
 		}
 		// End AMIs
 
+		// GuardDuty
+		gdInstances := GuardDutyInstances{}
+		if IsNukeable(gdInstances.ResourceName(), resourceTypes) {
+			detectors, err := getAllGuardDutyDetectors(session, excludeAfter)
+			if err != nil {
+				return nil, errors.WithStackTrace(err)
+			}
+			if len(detectors) > 0 {
+				gdInstances.DetectorIds = detectors
+				resourcesInRegion.Resources = append(resourcesInRegion.Resources, gdInstances)
+			}
+		}
+		// End GuardDuty
+
 		// Snapshots
 		snapshots := Snapshots{}
 		if IsNukeable(snapshots.ResourceName(), resourceTypes) {
@@ -642,6 +656,7 @@ func ListResourceTypes() []string {
 		IAMUsers{}.ResourceName(),
 		SecretsManagerSecrets{}.ResourceName(),
 		NatGateways{}.ResourceName(),
+		GuardDutyInstances{}.ResourceName(),
 	}
 	sort.Strings(resourceTypes)
 	return resourceTypes

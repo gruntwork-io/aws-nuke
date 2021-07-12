@@ -28,6 +28,7 @@ The currently supported functionality includes:
 - Deleting all IAM users in an AWS account
 - Deleting all Secrets Manager Secrets in an AWS account
 - Deleting all NAT Gateways in an AWS account
+- Deleting all GuardDuty instances in an AWS account  
 - Revoking the default rules in the un-deletable default security group of a VPC
 
 ### BEWARE!
