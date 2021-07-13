@@ -220,6 +220,20 @@ func GetAllResources(targetRegions []string, excludeAfter time.Time, resourceTyp
 		// The order in which resources are nuked is important
 		// because of dependencies between resources
 
+		// ACMPCA arns
+		acmpca := ACMPCA{}
+		if IsNukeable(acmpca.ResourceName(), resourceTypes) {
+			arns, err := getAllACMPCA(session, region, excludeAfter)
+			if err != nil {
+				return nil, errors.WithStackTrace(err)
+			}
+			if len(arns) > 0 {
+				acmpca.ARNs = awsgo.StringValueSlice(arns)
+				resourcesInRegion.Resources = append(resourcesInRegion.Resources, acmpca)
+			}
+		}
+		// End ACMPCA arns
+
 		// ASG Names
 		asGroups := ASGroups{}
 		if IsNukeable(asGroups.ResourceName(), resourceTypes) {
@@ -620,6 +634,7 @@ func GetAllResources(targetRegions []string, excludeAfter time.Time, resourceTyp
 // ListResourceTypes - Returns list of resources which can be passed to --resource-type
 func ListResourceTypes() []string {
 	resourceTypes := []string{
+		ACMPCA{}.ResourceName(),
 		ASGroups{}.ResourceName(),
 		LaunchConfigs{}.ResourceName(),
 		LoadBalancers{}.ResourceName(),

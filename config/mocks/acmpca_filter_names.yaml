@@ -1,0 +1,9 @@
+acmpca:
+  include:
+    names_regex:
+      - ^cloud-nuke-*
+      - test
+  exclude:
+    names_regex:
+      - donotdelete-0
+      - donotdelete-1
