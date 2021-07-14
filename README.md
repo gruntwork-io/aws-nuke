@@ -335,6 +335,13 @@ cd aws
 go test -v -run TestListAMIs
 ```
 
+Use env-vars to opt-in to special tests, which are expensive to run:
+
+```bash
+# Run acmpca tests
+TEST_ACMPCA_EXPENSIVE_ENABLE=1 go test -v ./...
+```
+
 ### Formatting
 
 Every source file in this project should be formatted with `go fmt`.

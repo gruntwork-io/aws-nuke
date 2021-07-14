@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -13,8 +14,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// enableACMPCAExpensiveEnv is used to control whether to run
+// the following test or not. The idea is that the test are disabled
+// per default and one has to opt-in to enable the test as creating
+// and destroying a ACM PCA is expensive.
+// Upper bound, worst case: $400 / month per single CA create/delete.
+const enableACMPCAExpensiveEnv = "TEST_ACMPCA_EXPENSIVE_ENABLE"
+
+// runOrSkip decides whether to run or skip the test depending
+// whether the env-var `TEST_ACMPCA_EXPENSIVE_ENABLE` is set or not.
+func runOrSkip(t *testing.T) {
+	if _, isSet := os.LookupEnv(enableACMPCAExpensiveEnv); !isSet {
+		t.Skipf("Skipping the integration test for acmpca. Set the env-var '%s' to enable this expensive test.", enableACMPCAExpensiveEnv)
+	}
+}
+
 // createTestACMPCA will create am ACMPCA and return its ARN.
 func createTestACMPCA(t *testing.T, session *session.Session, name string) *string {
+	// As an additional safety guard, we are adding another check here
+	// to decide whether to run the test or not.
+	runOrSkip(t)
+
 	svc := acmpca.New(session)
 	ca, err := svc.CreateCertificateAuthority(&acmpca.CreateCertificateAuthorityInput{
 		CertificateAuthorityConfiguration: &acmpca.CertificateAuthorityConfiguration{
@@ -39,6 +59,7 @@ func createTestACMPCA(t *testing.T, session *session.Session, name string) *stri
 }
 
 func TestListACMPCA(t *testing.T) {
+	runOrSkip(t)
 	t.Parallel()
 
 	region, err := getRandomRegion()
@@ -73,6 +94,7 @@ func TestListACMPCA(t *testing.T) {
 }
 
 func TestNukeACMPCA(t *testing.T) {
+	runOrSkip(t)
 	t.Parallel()
 
 	region, err := getRandomRegion()
