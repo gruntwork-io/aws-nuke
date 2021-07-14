@@ -14,6 +14,7 @@ func emptyConfig() *Config {
 		ResourceType{FilterRule{}, FilterRule{}},
 		ResourceType{FilterRule{}, FilterRule{}},
 		ResourceType{FilterRule{}, FilterRule{}},
+		ResourceType{FilterRule{}, FilterRule{}},
 	}
 }
 
@@ -47,6 +48,99 @@ func TestConfig_Empty(t *testing.T) {
 
 	if !reflect.DeepEqual(configObj, emptyConfig()) {
 		assert.Fail(t, "Config should be empty, %+v\n", configObj)
+	}
+
+	return
+}
+
+// ACMPCA Tests
+
+func TestConfigACMPCA_Empty(t *testing.T) {
+	configFilePath := "./mocks/acmpa_empty.yaml"
+	configObj, err := GetConfig(configFilePath)
+
+	require.NoError(t, err)
+
+	if !reflect.DeepEqual(configObj, emptyConfig()) {
+		assert.Fail(t, "Config should be empty, %+v\n", configObj.ACMPCA)
+	}
+
+	return
+}
+
+func TestConfigACMPCA_EmptyFilters(t *testing.T) {
+	configFilePath := "./mocks/acmpca_empty_filters.yaml"
+	configObj, err := GetConfig(configFilePath)
+
+	require.NoError(t, err)
+
+	if !reflect.DeepEqual(configObj, emptyConfig()) {
+		assert.Fail(t, "Config should be empty, %+v\n", configObj)
+	}
+
+	return
+}
+
+func TestConfigACMPCA_EmptyRules(t *testing.T) {
+	configFilePath := "./mocks/acmpca_empty_rules.yaml"
+	configObj, err := GetConfig(configFilePath)
+
+	require.NoError(t, err)
+
+	if !reflect.DeepEqual(configObj, emptyConfig()) {
+		assert.Fail(t, "Config should be empty, %+v\n", configObj)
+	}
+
+	return
+}
+
+func TestConfigACMPCA_IncludeNames(t *testing.T) {
+	configFilePath := "./mocks/acmpca_include_names.yaml"
+	configObj, err := GetConfig(configFilePath)
+
+	require.NoError(t, err)
+
+	if reflect.DeepEqual(configObj, emptyConfig()) {
+		assert.Fail(t, "Config should not be empty, %+v\n", configObj)
+	}
+
+	if len(configObj.ACMPCA.IncludeRule.NamesRegExp) == 0 {
+		assert.Fail(t, "ConfigObj should contain ACMPCA arn regexes, %+v\n", configObj)
+	}
+
+	return
+}
+
+func TestConfigACMPCA_ExcludeNames(t *testing.T) {
+	configFilePath := "./mocks/acmpca_exclude_names.yaml"
+	configObj, err := GetConfig(configFilePath)
+
+	require.NoError(t, err)
+
+	if reflect.DeepEqual(configObj, emptyConfig()) {
+		assert.Fail(t, "Config should not be empty, %+v\n", configObj)
+	}
+
+	if len(configObj.ACMPCA.ExcludeRule.NamesRegExp) == 0 {
+		assert.Fail(t, "ConfigObj should contain ACMPCA arn regexes, %+v\n", configObj)
+	}
+
+	return
+}
+
+func TestConfigACMPCA_FilterNames(t *testing.T) {
+	configFilePath := "./mocks/acmpca_filter_names.yaml"
+	configObj, err := GetConfig(configFilePath)
+
+	require.NoError(t, err)
+
+	if reflect.DeepEqual(configObj, emptyConfig()) {
+		assert.Fail(t, "Config should not be empty, %+v\n", configObj)
+	}
+
+	if len(configObj.ACMPCA.IncludeRule.NamesRegExp) == 0 ||
+		len(configObj.ACMPCA.ExcludeRule.NamesRegExp) == 0 {
+		assert.Fail(t, "ConfigObj should contain ACMPCA arn regexes, %+v\n", configObj)
 	}
 
 	return

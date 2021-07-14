@@ -1,0 +1,5 @@
+acmpca:
+  exclude:
+    names_regex:
+      - donotdelete-0
+      - donotdelete-1
