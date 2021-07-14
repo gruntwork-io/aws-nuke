@@ -13,23 +13,22 @@ import (
 // getAllACMPCA returns a list of all arns of ACMPCA, which can be deleted.
 func getAllACMPCA(session *session.Session, region string, excludeAfter time.Time) ([]*string, error) {
 	svc := acmpca.New(session)
-
-	result, err := svc.ListCertificateAuthorities(&acmpca.ListCertificateAuthoritiesInput{})
-	if err != nil {
-		return nil, errors.WithStackTrace(err)
-	}
-
 	var arns []*string
-	for _, ca := range result.CertificateAuthorities {
-		// one can only delete CAs if they are 'ACTIVE' or 'DISABLED'
-		statusSafe := aws.StringValue(ca.Status)
-		isCandidateForDeletion := statusSafe == acmpca.CertificateAuthorityStatusActive || statusSafe == acmpca.CertificateAuthorityStatusDisabled
-		if !isCandidateForDeletion {
-			continue
+	if paginationErr := svc.ListCertificateAuthoritiesPages(&acmpca.ListCertificateAuthoritiesInput{}, func(p *acmpca.ListCertificateAuthoritiesOutput, lastPage bool) bool {
+		for _, ca := range p.CertificateAuthorities {
+			// one can only delete CAs if they are 'ACTIVE' or 'DISABLED'
+			statusSafe := aws.StringValue(ca.Status)
+			isCandidateForDeletion := statusSafe == acmpca.CertificateAuthorityStatusActive || statusSafe == acmpca.CertificateAuthorityStatusDisabled
+			if !isCandidateForDeletion {
+				continue
+			}
+			if excludeAfter.After(aws.TimeValue(ca.CreatedAt)) {
+				arns = append(arns, ca.Arn)
+			}
 		}
-		if excludeAfter.After(aws.TimeValue(ca.CreatedAt)) {
-			arns = append(arns, ca.Arn)
-		}
+		return true
+	}); paginationErr != nil {
+		return nil, errors.WithStackTrace(paginationErr)
 	}
 	return arns, nil
 }
