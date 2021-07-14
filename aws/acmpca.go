@@ -27,7 +27,7 @@ func getAllACMPCA(session *session.Session, region string, excludeAfter time.Tim
 		if !isCandidateForDeletion {
 			continue
 		}
-		if excludeAfter.After(*ca.CreatedAt) {
+		if excludeAfter.After(aws.TimeValue(ca.CreatedAt)) {
 			arns = append(arns, ca.Arn)
 		}
 	}
