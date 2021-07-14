@@ -22,7 +22,8 @@ func getAllACMPCA(session *session.Session, region string, excludeAfter time.Tim
 	var arns []*string
 	for _, ca := range result.CertificateAuthorities {
 		// one can only delete CAs if they are 'ACTIVE' or 'DISABLED'
-		isCandidateForDeletion := *ca.Status == acmpca.CertificateAuthorityStatusActive || *ca.Status == acmpca.CertificateAuthorityStatusDisabled
+		statusSafe := aws.StringValue(ca.Status)
+		isCandidateForDeletion := statusSafe == acmpca.CertificateAuthorityStatusActive || statusSafe == acmpca.CertificateAuthorityStatusDisabled
 		if !isCandidateForDeletion {
 			continue
 		}
