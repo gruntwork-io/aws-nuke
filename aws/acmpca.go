@@ -7,32 +7,58 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/acmpca"
+	"github.com/gruntwork-io/cloud-nuke/config"
 	"github.com/gruntwork-io/cloud-nuke/logging"
 	"github.com/gruntwork-io/go-commons/errors"
 	"github.com/hashicorp/go-multierror"
 )
 
 // getAllACMPCA returns a list of all arns of ACMPCA, which can be deleted.
-func getAllACMPCA(session *session.Session, region string, excludeAfter time.Time) ([]*string, error) {
+func getAllACMPCA(session *session.Session, region string, excludeAfter time.Time, configObj config.Config) ([]*string, error) {
 	svc := acmpca.New(session)
 	var arns []*string
 	if paginationErr := svc.ListCertificateAuthoritiesPages(&acmpca.ListCertificateAuthoritiesInput{}, func(p *acmpca.ListCertificateAuthoritiesOutput, lastPage bool) bool {
 		for _, ca := range p.CertificateAuthorities {
-			// one can only delete CAs if they are 'ACTIVE' or 'DISABLED'
-			statusSafe := aws.StringValue(ca.Status)
-			isCandidateForDeletion := statusSafe == acmpca.CertificateAuthorityStatusActive || statusSafe == acmpca.CertificateAuthorityStatusDisabled
-			if !isCandidateForDeletion {
-				continue
-			}
-			if excludeAfter.After(aws.TimeValue(ca.CreatedAt)) {
+			if shouldIncludeACMPCA(ca, excludeAfter, configObj) {
 				arns = append(arns, ca.Arn)
 			}
 		}
-		return true
+		return !lastPage
 	}); paginationErr != nil {
 		return nil, errors.WithStackTrace(paginationErr)
 	}
 	return arns, nil
+}
+
+func shouldIncludeACMPCA(ca *acmpca.CertificateAuthority, excludeAfter time.Time, configObj config.Config) bool {
+	if ca == nil {
+		return false
+	}
+
+	// one can only delete CAs if they are 'ACTIVE' or 'DISABLED'
+	statusSafe := aws.StringValue(ca.Status)
+	isCandidateForDeletion := statusSafe == acmpca.CertificateAuthorityStatusActive || statusSafe == acmpca.CertificateAuthorityStatusDisabled
+	if !isCandidateForDeletion {
+		return false
+	}
+
+	// reference time for excludeAfter is lastStateChangeAt time,
+	// unless it was never changed and createAt time is used.
+	var referenceTime time.Time
+	if ca.LastStateChangeAt == nil {
+		referenceTime = aws.TimeValue(ca.CreatedAt)
+	} else {
+		referenceTime = aws.TimeValue(ca.LastStateChangeAt)
+	}
+	if excludeAfter.Before(referenceTime) {
+		return false
+	}
+
+	return config.ShouldInclude(
+		aws.StringValue(ca.Arn),
+		configObj.ACMPCA.IncludeRule.NamesRegExp,
+		configObj.ACMPCA.ExcludeRule.NamesRegExp,
+	)
 }
 
 // nukeAllACMPCA will delete all ACMPCA, which are given by a list of arns.

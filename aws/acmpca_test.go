@@ -7,6 +7,7 @@ import (
 	awsgo "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/acmpca"
+	"github.com/gruntwork-io/cloud-nuke/config"
 	"github.com/gruntwork-io/cloud-nuke/util"
 	"github.com/gruntwork-io/go-commons/errors"
 	"github.com/stretchr/testify/assert"
@@ -57,13 +58,13 @@ func TestListACMPCA(t *testing.T) {
 	// clean up after this test
 	defer nukeAllACMPCA(session, []*string{arn})
 
-	newARNs, err := getAllACMPCA(session, region, time.Now().Add(1*time.Hour*-1))
+	newARNs, err := getAllACMPCA(session, region, time.Now().Add(1*time.Hour*-1), config.Config{})
 	if err != nil {
 		assert.Fail(t, "Unable to fetch list of ACMPCA arns")
 	}
 	assert.NotContains(t, awsgo.StringValueSlice(newARNs), awsgo.StringValue(arn))
 
-	allARNs, err := getAllACMPCA(session, region, time.Now().Add(1*time.Hour))
+	allARNs, err := getAllACMPCA(session, region, time.Now().Add(1*time.Hour), config.Config{})
 	if err != nil {
 		assert.Fail(t, "Unable to fetch list of ACMPCA arns")
 	}
@@ -94,7 +95,7 @@ func TestNukeACMPCA(t *testing.T) {
 		assert.Fail(t, errors.WithStackTrace(err).Error())
 	}
 
-	arns, err := getAllACMPCA(session, region, time.Now().Add(1*time.Hour))
+	arns, err := getAllACMPCA(session, region, time.Now().Add(1*time.Hour), config.Config{})
 	if err != nil {
 		assert.Fail(t, "Unable to fetch list of ACMPCA arns")
 	}

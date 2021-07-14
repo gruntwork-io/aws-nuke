@@ -223,7 +223,7 @@ func GetAllResources(targetRegions []string, excludeAfter time.Time, resourceTyp
 		// ACMPCA arns
 		acmpca := ACMPCA{}
 		if IsNukeable(acmpca.ResourceName(), resourceTypes) {
-			arns, err := getAllACMPCA(session, region, excludeAfter)
+			arns, err := getAllACMPCA(session, region, excludeAfter, configObj)
 			if err != nil {
 				return nil, errors.WithStackTrace(err)
 			}
